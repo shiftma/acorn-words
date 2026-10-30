@@ -171,6 +171,20 @@ button:focus-visible,textarea:focus-visible{outline:3px solid var(--sun);outline
 .knob svg{width:36px;height:36px}
 .example{font-family:var(--font-word);font-size:clamp(26px,6vw,36px);line-height:1.4;text-align:center;margin:0;text-wrap:balance}
 .example mark{background:var(--sun-bg);color:var(--ink);font-weight:700;border-radius:8px;padding:0 .18em;box-shadow:inset 0 -4px 0 var(--sun)}
+.levels{display:flex;gap:8px;overflow-x:auto;padding-bottom:4px;scrollbar-width:thin}
+.lvl{font:inherit;border:2px solid var(--chip);background:var(--paper);color:var(--ink);border-radius:14px;padding:8px 14px 10px;cursor:pointer;
+  display:flex;flex-direction:column;align-items:stretch;gap:4px;min-width:118px;flex:none;text-align:left}
+.lvl b{font-family:var(--font-display);font-size:18px;font-weight:400;display:flex;align-items:center;gap:6px}
+.lvl b svg{width:18px;height:18px}
+.lvl small{font-size:13px;color:var(--muted);font-variant-numeric:tabular-nums}
+.lvl .bar{height:6px;border-radius:3px;background:var(--chip);overflow:hidden}
+.lvl .bar i{display:block;height:100%;background:var(--acorn);border-radius:3px}
+.lvl[aria-pressed="true"]{border-color:var(--ink);box-shadow:0 3px 0 var(--edge)}
+.lvl.done small{color:var(--good)}
+.lvl.done .bar i{background:var(--good)}
+.review-group{margin-top:16px}
+.review-group summary{cursor:pointer;color:var(--muted);font-size:15px}
+.review-group .chip{font-size:18px}
 @media (prefers-reduced-motion:reduce){*{animation:none!important;transition:none!important}}
 </style>
 </head>
@@ -196,7 +210,7 @@ button:focus-visible,textarea:focus-visible{outline:3px solid var(--sun);outline
   <header>
     <div>
       <h1>Acorn Words</h1>
-      <p class="sub" id="weekLabel">Kindergarten sight words · this week</p>
+      <p class="sub" id="weekLabel">Kindergarten sight words</p>
     </div>
     <div class="jarbox">
       <div class="jar" id="jar" title="Acorns collected">
@@ -205,6 +219,8 @@ button:focus-visible,textarea:focus-visible{outline:3px solid var(--sun);outline
       <button class="reset" id="resetAll">Reset</button>
     </div>
   </header>
+
+  <div class="levels" id="levels" role="group" aria-label="Levels"></div>
 
   <nav role="tablist" aria-label="Games">
     <button role="tab" id="tab-cards" data-mode="cards" aria-selected="true">Flash cards</button>
@@ -226,7 +242,10 @@ button:focus-visible,textarea:focus-visible{outline:3px solid var(--sun);outline
 
 <script>
 const KEY = 'acorn-words-v1';
-const STARTER = `I: ___ can see a cat.
+/* One level per week. Add each new list at the end: earlier levels stay in the games as review.
+   letters: sounds taught so far. families: word families for Sound slide, built only from those letters. */
+const LEVELS = [
+  {name: 'Level 1', letters: 'mbstadncpirfo', families: ['at', 'an', 'ap', 'ad', 'ip', 'it', 'in', 'op', 'ot'], words: `I: ___ can see a cat.
 can: I ___ run fast.
 a: I see ___ big dog.
 is: The cat ___ on the mat.
@@ -240,7 +259,8 @@ you: I see ___.
 of: A cup ___ milk.
 for: This is ___ you.
 said: Mom ___ yes.
-all: We ate it ___.`;
+all: We ate it ___.`}
+];
 const RIPE = 3;
 
 function parseList(text){
@@ -256,12 +276,40 @@ function parseList(text){
   }
   return out;
 }
-function listToText(list){ return list.map(x => x.s ? `${x.w}: ${x.s}` : x.w).join('\n'); }
-
 let state;
 try { state = JSON.parse(localStorage.getItem(KEY)); } catch(e) {}
-if (!state || !Array.isArray(state.list) || !state.list.length) state = {list: parseList(STARTER), acorns: {}, total: 0, label: ''};
+if (!state || typeof state !== 'object') state = {};
+state.acorns = state.acorns || {}; state.blend = state.blend || {}; state.total = state.total || 0;
+if (typeof state.extra !== 'string') state.extra = '';
+delete state.list; delete state.label;
+/* a level added since the last visit opens automatically */
+let newLevel = false;
+if (!(state.seen >= 1) || state.seen < LEVELS.length){
+  newLevel = state.seen >= 1;
+  state.seen = LEVELS.length; state.level = LEVELS.length - 1;
+}
+if (!(state.level >= 0 && state.level < LEVELS.length)) state.level = LEVELS.length - 1;
 function save(){ try { localStorage.setItem(KEY, JSON.stringify(state)); } catch(e) {} }
+
+/* the words in play: this level's list and grown-up extras first, then earlier levels as review */
+let WORDS = [];
+function buildPool(){
+  const seen = new Set(), out = [];
+  const add = (list, review) => list.forEach(x => {
+    const k = x.w.toLowerCase();
+    if (!seen.has(k)){ seen.add(k); out.push(Object.assign({}, x, {review})); }
+  });
+  add(parseList(LEVELS[state.level].words), false);
+  add(parseList(state.extra), false);
+  for (let i = state.level - 1; i >= 0; i--) add(parseList(LEVELS[i].words), true);
+  WORDS = out;
+}
+const freshWords = () => WORDS.filter(x => !x.review);
+function levelProgress(i){
+  const ws = parseList(LEVELS[i].words);
+  return {ready: ws.filter(x => (state.acorns[x.w] || 0) >= RIPE).length, total: ws.length};
+}
+buildPool();
 
 const $ = s => document.querySelector(s);
 const stage = $('#stage');
@@ -332,30 +380,55 @@ function award(word, el, bucket){
   state[b][word] = (state[b][word] || 0) + 1; state.total++; save();
   chime(); if (el) burst(el);
   const jar = $('#jar'); jar.classList.remove('bump'); void jar.offsetWidth; jar.classList.add('bump');
-  renderJar();
-  if (state.total % 10 === 0) toast(`${state.total} acorns! The squirrel is so proud.`);
+  renderJar(); renderLevels();
+  const p = levelProgress(state.level);
+  if (b === 'acorns' && acornsOf(word) === RIPE && p.ready === p.total) toast(`${LEVELS[state.level].name} complete! Every word has 3 acorns.`);
+  else if (state.total % 10 === 0) toast(`${state.total} acorns! The squirrel is so proud.`);
   else if (b === 'acorns' && acornsOf(word) === RIPE) toast(`“${word}” is ready! 3 acorns.`);
+}
+function chipHTML(x){
+  const n = acornsOf(x.w), pips = [0,1,2].map(i => acornSVG(i < n ? '' : 'empty')).join('');
+  return `<button class="chip ${n >= RIPE ? 'ripe' : ''}" data-say="${esc(x.w)}" aria-label="${esc(x.w)}, ${n} acorns">${esc(x.w)}<span class="n">${pips}</span></button>`;
 }
 function renderJar(){
   $('#total').textContent = state.total;
-  $('#chips').innerHTML = state.list.map(x => {
-    const n = acornsOf(x.w), pips = [0,1,2].map(i => acornSVG(i < n ? '' : 'empty')).join('');
-    return `<button class="chip ${n >= RIPE ? 'ripe' : ''}" data-say="${esc(x.w)}" aria-label="${esc(x.w)}, ${n} acorns">${esc(x.w)}<span class="n">${pips}</span></button>`;
-  }).join('');
+  const review = WORDS.filter(x => x.review);
+  const wasOpen = $('#reviewGroup') && $('#reviewGroup').open;
+  $('#chips').innerHTML = freshWords().map(chipHTML).join('') + (review.length ? `
+    <details class="review-group" id="reviewGroup" style="flex-basis:100%"${wasOpen ? ' open' : ''}>
+      <summary>Review words from earlier levels (${review.filter(x => acornsOf(x.w) >= RIPE).length} of ${review.length} ready)</summary>
+      <div class="chips">${review.map(chipHTML).join('')}</div>
+    </details>` : '');
 }
+function renderLevels(){
+  $('#levels').innerHTML = LEVELS.map((lv, i) => {
+    const p = levelProgress(i), done = p.ready === p.total;
+    return `<button class="lvl ${done ? 'done' : ''}" data-lvl="${i}" aria-pressed="${i === state.level}">
+      <b>${done ? acornSVG('') : ''}${esc(lv.name)}</b>
+      <span class="bar"><i style="width:${Math.round(100 * p.ready / p.total)}%"></i></span>
+      <small>${done ? 'Complete!' : `${p.ready} of ${p.total} ready`}</small></button>`;
+  }).join('');
+  $('#weekLabel').textContent = `Kindergarten sight words · ${LEVELS[state.level].name}`;
+}
+$('#levels').addEventListener('click', e => {
+  const b = e.target.closest('[data-lvl]'); if (!b) return;
+  state.level = +b.dataset.lvl; save(); buildPool();
+  slide.fam = null; slide.i = 0; slide.pick = null;
+  renderLevels(); renderJar(); MODES[mode]();
+});
 $('#chips').addEventListener('click', e => { const b = e.target.closest('[data-say]'); if (b) say(b.dataset.say); });
 
 /* least-practiced words come up more often */
 function weightedPick(pool, avoid){
   const c = pool.filter(x => x.w !== avoid);
   const src = c.length ? c : pool;
-  const ws = src.map(x => 1 / (1 + acornsOf(x.w)) ** 1.5);
+  const ws = src.map(x => (x.review ? 0.35 : 1) / (1 + acornsOf(x.w)) ** 1.5);
   let r = Math.random() * ws.reduce((a, b) => a + b, 0);
   for (let i = 0; i < src.length; i++){ r -= ws[i]; if (r <= 0) return src[i]; }
   return src[src.length - 1];
 }
 function optionsFor(target, count){
-  const others = shuffle(state.list.filter(x => x.w !== target.w)).slice(0, count - 1);
+  const others = shuffle(WORDS.filter(x => x.w !== target.w)).slice(0, count - 1);
   return shuffle([target, ...others]);
 }
 function dots(results, total){
@@ -391,7 +464,9 @@ function wordSVG(w){
 /* ---------- Flash cards ---------- */
 let flash = {order: [], i: 0, results: []};
 function startCards(){
-  flash.order = state.list.slice().map(x => [x, acornsOf(x.w) + Math.random() * 1.5]).sort((a, b) => a[1] - b[1]).map(a => a[0]);
+  /* this level's words plus the five review words she knows least */
+  const review = shuffle(WORDS.filter(x => x.review)).sort((a, b) => acornsOf(a.w) - acornsOf(b.w)).slice(0, 5);
+  flash.order = freshWords().concat(review).map(x => [x, acornsOf(x.w) + Math.random() * 1.5]).sort((a, b) => a[1] - b[1]).map(a => a[0]);
   flash.i = 0; flash.results = []; renderCards();
 }
 function renderCards(){
@@ -428,8 +503,8 @@ function startFind(){ find = {round: 0, results: [], target: null}; nextFind(); 
 function nextFind(){
   if (find.round >= FIND_ROUNDS) return roundDone(find.results, startFind, 'Play again');
   find.round++;
-  find.target = weightedPick(state.list, find.target && find.target.w);
-  find.opts = optionsFor(find.target, Math.min(4, state.list.length));
+  find.target = weightedPick(WORDS, find.target && find.target.w);
+  find.opts = optionsFor(find.target, Math.min(4, WORDS.length));
   find.first = true; find.locked = false;
   renderFind();
   setTimeout(() => say(find.target.w), 250);
@@ -462,7 +537,7 @@ const FILL_ROUNDS = 8;
 let fill = {};
 function startFill(){ fill = {round: 0, results: [], target: null}; nextFill(); }
 function nextFill(){
-  const pool = state.list.filter(x => x.s);
+  const pool = WORDS.filter(x => x.s);
   if (!pool.length){
     stage.innerHTML = `<div class="done"><h2>No sentences yet</h2>
       <p>Add a sentence after a word in the word list, like <b>see: I can ___ you.</b></p>
@@ -472,7 +547,7 @@ function nextFill(){
   if (fill.round >= FILL_ROUNDS) return roundDone(fill.results, startFill, 'Play again');
   fill.round++;
   fill.target = weightedPick(pool, fill.target && fill.target.w);
-  fill.opts = optionsFor(fill.target, Math.min(3, state.list.length));
+  fill.opts = optionsFor(fill.target, Math.min(3, WORDS.length));
   fill.first = true; fill.locked = false;
   renderFill();
 }
@@ -565,7 +640,13 @@ const CVC_SENT = {
   mop: 'Mop the floor.', top: 'Spin the top.', pop: 'Pop the bubble.', cop: 'The cop helps us.',
   not: 'I am not sleepy.', rot: 'Old apples rot.', pot: 'The soup is in the pot.', dot: 'Draw a dot.', cot: 'The baby sleeps on a cot.'
 };
-let slide = {sub: 'out', fam: 'at', i: 0, pick: null};
+let slide = {sub: 'out', fam: null, i: 0, pick: null};
+/* this level's families first, then the ones from earlier levels */
+function familiesInPlay(){
+  const out = [];
+  for (let i = state.level; i >= 0; i--) (LEVELS[i].families || []).forEach(f => { if (FAMILIES[f] && !out.includes(f)) out.push(f); });
+  return out.length ? out : Object.keys(FAMILIES);
+}
 
 function tilesHTML(tiles){
   return `<div class="tiles">${tiles.map((t, i) => `<button class="tile ${t.heart ? 'heart' : ''} ${t.silent ? 'silent' : ''}" data-i="${i}" aria-label="${esc(t.g)}: ${esc(t.note)}">${t.heart ? '<svg class="hrt" aria-hidden="true"><use href="#heart"/></svg>' : ''}${esc(t.g)}</button>`).join('')}</div>
@@ -586,9 +667,11 @@ function renderSlide(){
   stage.querySelectorAll('[data-sub]').forEach(b => b.onclick = () => { slide.sub = b.dataset.sub; renderSlide(); });
 }
 function renderBlend(seg){
+  const fams = familiesInPlay();
+  if (!fams.includes(slide.fam)){ slide.fam = fams[0]; slide.i = 0; }
   const words = FAMILIES[slide.fam], w = words[slide.i % words.length], tiles = w.split('').map(L);
   stage.innerHTML = `${seg}
-    <div class="fams" role="group" aria-label="Word family">${Object.keys(FAMILIES).map(f => `<button class="fam" data-fam="${f}" aria-pressed="${f === slide.fam}">-${f}</button>`).join('')}</div>
+    <div class="fams" role="group" aria-label="Word family">${fams.map(f => `<button class="fam" data-fam="${f}" aria-pressed="${f === slide.fam}">-${f}</button>`).join('')}</div>
     <div class="slidebox">
       ${tilesHTML(tiles)}
       <div class="track" id="track"><div class="knob" id="knob" role="slider" tabindex="0" aria-label="Slide the acorn under the letters" aria-valuemin="0" aria-valuemax="100" aria-valuenow="0">${acornSVG('')}</div><span class="end">say it fast!</span></div>
@@ -650,16 +733,17 @@ function setupSlide(onDone){
   set(0);
 }
 function renderLook(seg){
-  if (!slide.pick || !state.list.some(x => x.w === slide.pick)) slide.pick = state.list[0].w;
+  const lookWords = freshWords();
+  if (!slide.pick || !lookWords.some(x => x.w === slide.pick)) slide.pick = lookWords[0].w;
   const w = slide.pick, known = SIGHT[w] || SIGHT[w.toLowerCase()], tiles = known || autoTiles(w);
-  const sent = (state.list.find(x => x.w === w) || {}).s;
+  const sent = (lookWords.find(x => x.w === w) || {}).s;
   const hearts = tiles.filter(t => t.heart).length;
   let help;
   if (!known) help = 'Tap each letter to hear its usual sound. Grown-up: this word is new to the game, so tricky letters aren’t marked.';
   else if (hearts) help = `<svg class="hico" aria-hidden="true"><use href="#heart"/></svg> ${hearts === 1 ? '1 heart part' : hearts + ' heart parts'}. Heart parts don’t follow the usual sound rules, so we learn them by heart.`;
   else help = 'No heart parts. She can sound this one out!';
   stage.innerHTML = `${seg}
-    <div class="fams" role="group" aria-label="Pick a word">${state.list.map(x => `<button class="fam" data-pick="${esc(x.w)}" aria-pressed="${x.w === w}">${esc(x.w)}</button>`).join('')}</div>
+    <div class="fams" role="group" aria-label="Pick a word">${lookWords.map(x => `<button class="fam" data-pick="${esc(x.w)}" aria-pressed="${x.w === w}">${esc(x.w)}</button>`).join('')}</div>
     <div class="slidebox">
       ${tilesHTML(tiles)}
       <p class="helper">${help}</p>
@@ -675,35 +759,29 @@ function renderLook(seg){
 
 /* ---------- Grown-ups: word list ---------- */
 function renderWords(){
+  const lv = LEVELS[state.level];
   stage.innerHTML = `<div class="editor">
-    <label for="label">This week</label>
-    <textarea id="label" style="min-height:0;height:52px" rows="1" placeholder="Week 12">${esc(state.label || '')}</textarea>
-    <label for="list">Words to practice</label>
-    <p class="tips">One word per line. To use a word in <b>Finish the sentence</b>, add a colon and a short sentence with <code>___</code> where the word goes, like <code>said: Mom ___ yes.</code> Acorns already earned stay with each word.</p>
-    <textarea id="list" spellcheck="false">${esc(listToText(state.list))}</textarea>
+    <label>${esc(lv.name)} words</label>
+    <p class="tips">${parseList(lv.words).map(x => esc(x.w)).join(', ')}</p>
+    <label for="list">Extra words</label>
+    <p class="tips">Words you add here join every level, next to the level’s own list. One word per line. To use a word in <b>Finish the sentence</b>, add a colon and a short sentence with <code>___</code> where the word goes, like <code>said: Mom ___ yes.</code></p>
+    <textarea id="list" spellcheck="false" placeholder="here: Come ___ and play.">${esc(state.extra)}</textarea>
     <div class="row">
-      <button class="btn go small" id="saveList">Save words</button>
-      <button class="btn small" id="resetList">Use the starter list</button>
+      <button class="btn go small" id="saveList">Save extra words</button>
       <button class="btn warn small" id="clearAcorns">Clear all acorns</button>
     </div>
     <p class="tips" id="note"></p></div>`;
   $('#saveList').onclick = () => {
-    const list = parseList($('#list').value);
-    if (list.length < 2){ $('#note').textContent = 'Add at least 2 words so the games have choices.'; return; }
-    state.list = list; state.label = $('#label').value.trim(); save(); renderJar(); renderLabel();
-    const withS = list.filter(x => x.s).length;
-    $('#note').textContent = `Saved ${list.length} words, ${withS} with sentences.`;
+    state.extra = $('#list').value; save(); buildPool(); renderJar();
+    const list = parseList(state.extra);
+    $('#note').textContent = list.length ? `Saved ${list.length} extra words, ${list.filter(x => x.s).length} with sentences.` : 'No extra words. The games use the level list.';
   };
-  $('#resetList').onclick = () => { $('#list').value = STARTER; $('#label').value = ''; $('#note').textContent = 'Starter list loaded. Tap Save words to use it.'; };
   const ca = $('#clearAcorns');
   ca.onclick = () => {
-    if (ca.dataset.armed){ state.acorns = {}; state.blend = {}; state.total = 0; save(); renderJar(); ca.textContent = 'Acorns cleared'; delete ca.dataset.armed; return; }
+    if (ca.dataset.armed){ state.acorns = {}; state.blend = {}; state.total = 0; save(); renderJar(); renderLevels(); ca.textContent = 'Acorns cleared'; delete ca.dataset.armed; return; }
     ca.dataset.armed = '1'; ca.textContent = 'Tap again to clear every acorn';
     setTimeout(() => { if (ca.dataset.armed){ delete ca.dataset.armed; ca.textContent = 'Clear all acorns'; } }, 4000);
   };
-}
-function renderLabel(){
-  $('#weekLabel').textContent = 'Kindergarten sight words · ' + (state.label ? state.label.replace(/^week of/i, 'week of') : 'this week');
 }
 
 /* ---------- modes ---------- */
@@ -714,7 +792,7 @@ const resetBtn = $('#resetAll');
 resetBtn.onclick = () => {
   if (resetBtn.dataset.armed){
     delete resetBtn.dataset.armed; resetBtn.textContent = 'Reset';
-    state.acorns = {}; state.blend = {}; state.total = 0; save(); renderJar();
+    state.acorns = {}; state.blend = {}; state.total = 0; save(); renderJar(); renderLevels();
     toast('Fresh start! The jar is empty.');
     if (mode !== 'words') MODES[mode]();
     return;
@@ -731,7 +809,8 @@ function setMode(m){
 }
 document.querySelectorAll('nav [role=tab]').forEach(b => b.onclick = () => setMode(b.dataset.mode));
 
-renderLabel(); renderJar(); setMode('cards');
+save(); renderLevels(); renderJar(); setMode('cards');
+if (newLevel) toast(`New level! ${LEVELS[state.level].name} is ready.`);
 </script>
 </body>
 </html>
