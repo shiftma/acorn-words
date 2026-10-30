@@ -13,8 +13,9 @@ body{margin:0} img{max-width:100%} [hidden]{display:none!important}
 <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
 <link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Andika:wght@400;700&family=Sniglet:wght@400;800&display=swap">
 <style>
-/* Layout: one centered play column. Tabs on top, a handwriting-paper card as the stage, the word jar underneath. */
+/* Light only, on every device. Layout: one centered play column. Tabs on top, a handwriting-paper card as the stage, the word jar underneath. */
 :root{
+  color-scheme:light;
   --bg:#EAF1F7; --paper:#FFFFFF; --ink:#1F2A44; --muted:#5A6A82;
   --line-blue:#8AB0DE; --line-red:#E0584F;
   --acorn:#B46F2C; --acorn-cap:#6B4724; --sun:#F4B931; --sun-bg:#FFF0C4;
@@ -23,22 +24,6 @@ body{margin:0} img{max-width:100%} [hidden]{display:none!important}
   --font-display:"Sniglet","Arial Rounded MT Bold","Trebuchet MS",system-ui,sans-serif;
   --font-word:"Andika","Century Gothic","Avenir Next",system-ui,sans-serif;
   --font-ui:"Andika",system-ui,-apple-system,"Segoe UI",sans-serif;
-}
-@media (prefers-color-scheme: dark){
-  :root:not([data-theme="light"]){
-    --bg:#15231E; --paper:#1D3029; --ink:#F1F4EC; --muted:#A6BAAF;
-    --line-blue:#5D84B5; --line-red:#E57A6F;
-    --acorn:#D99550; --acorn-cap:#A77443; --sun:#F2C14E; --sun-bg:#4A3B14;
-    --good:#62CF8E; --good-bg:#21422F; --try:#F0A65A; --try-bg:#45301C;
-    --chip:#273D34; --edge:#0E1A15; color-scheme:dark;
-  }
-}
-:root[data-theme="dark"]{
-  --bg:#15231E; --paper:#1D3029; --ink:#F1F4EC; --muted:#A6BAAF;
-  --line-blue:#5D84B5; --line-red:#E57A6F;
-  --acorn:#D99550; --acorn-cap:#A77443; --sun:#F2C14E; --sun-bg:#4A3B14;
-  --good:#62CF8E; --good-bg:#21422F; --try:#F0A65A; --try-bg:#45301C;
-  --chip:#273D34; --edge:#0E1A15; color-scheme:dark;
 }
 *{box-sizing:border-box}
 body{background:var(--bg);color:var(--ink);font-family:var(--font-ui);font-size:17px;line-height:1.5}
