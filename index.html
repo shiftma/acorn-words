@@ -1,0 +1,737 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<style>
+:root{padding-top:env(safe-area-inset-top,0px);padding-bottom:env(safe-area-inset-bottom,0px)}
+body{margin:0} img{max-width:100%} [hidden]{display:none!important}
+</style>
+<title>Acorn Words</title>
+<meta name="claude:viewport-fit-sides" content="cover">
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Andika:wght@400;700&family=Sniglet:wght@400;800&display=swap">
+<style>
+/* Layout: one centered play column. Tabs on top, a handwriting-paper card as the stage, the word jar underneath. */
+:root{
+  --bg:#EAF1F7; --paper:#FFFFFF; --ink:#1F2A44; --muted:#5A6A82;
+  --line-blue:#8AB0DE; --line-red:#E0584F;
+  --acorn:#B46F2C; --acorn-cap:#6B4724; --sun:#F4B931; --sun-bg:#FFF0C4;
+  --good:#23894E; --good-bg:#DDF3E5; --try:#C8661E; --try-bg:#FBE7D6;
+  --chip:#DDE7F1; --edge:#C3D2E2;
+  --font-display:"Sniglet","Arial Rounded MT Bold","Trebuchet MS",system-ui,sans-serif;
+  --font-word:"Andika","Century Gothic","Avenir Next",system-ui,sans-serif;
+  --font-ui:"Andika",system-ui,-apple-system,"Segoe UI",sans-serif;
+}
+@media (prefers-color-scheme: dark){
+  :root:not([data-theme="light"]){
+    --bg:#15231E; --paper:#1D3029; --ink:#F1F4EC; --muted:#A6BAAF;
+    --line-blue:#5D84B5; --line-red:#E57A6F;
+    --acorn:#D99550; --acorn-cap:#A77443; --sun:#F2C14E; --sun-bg:#4A3B14;
+    --good:#62CF8E; --good-bg:#21422F; --try:#F0A65A; --try-bg:#45301C;
+    --chip:#273D34; --edge:#0E1A15; color-scheme:dark;
+  }
+}
+:root[data-theme="dark"]{
+  --bg:#15231E; --paper:#1D3029; --ink:#F1F4EC; --muted:#A6BAAF;
+  --line-blue:#5D84B5; --line-red:#E57A6F;
+  --acorn:#D99550; --acorn-cap:#A77443; --sun:#F2C14E; --sun-bg:#4A3B14;
+  --good:#62CF8E; --good-bg:#21422F; --try:#F0A65A; --try-bg:#45301C;
+  --chip:#273D34; --edge:#0E1A15; color-scheme:dark;
+}
+*{box-sizing:border-box}
+body{background:var(--bg);color:var(--ink);font-family:var(--font-ui);font-size:17px;line-height:1.5}
+.wrap{max-width:760px;margin:0 auto;padding-block:20px 48px;
+  padding-left:max(16px,env(safe-area-inset-left,0px));padding-right:max(16px,env(safe-area-inset-right,0px));
+  display:flex;flex-direction:column;gap:18px}
+header{display:flex;align-items:center;justify-content:space-between;gap:12px;flex-wrap:wrap}
+h1{font-family:var(--font-display);font-weight:800;font-size:clamp(34px,7vw,48px);line-height:1;margin:0;text-wrap:balance}
+.sub{margin:4px 0 0;color:var(--muted);font-size:15px}
+.jar{display:flex;align-items:center;gap:8px;background:var(--paper);border-radius:999px;padding:6px 16px 6px 8px;
+  box-shadow:0 3px 0 var(--edge);font-family:var(--font-display);font-size:26px;font-variant-numeric:tabular-nums}
+.jar svg{width:38px;height:38px}
+.jar small{font-family:var(--font-ui);font-size:13px;color:var(--muted)}
+.jar.bump{animation:bump .5s}
+.jarbox{display:flex;align-items:center;gap:10px}
+.reset{font:inherit;font-size:15px;border:2px solid var(--chip);background:transparent;color:var(--muted);border-radius:999px;padding:8px 14px;cursor:pointer;min-height:44px}
+.reset[data-armed]{background:var(--try-bg);border-color:var(--try);color:var(--try)}
+@keyframes bump{30%{transform:scale(1.15)}}
+
+.acorn-nut{fill:var(--acorn)} .acorn-cap{fill:var(--acorn-cap)} .acorn-hi{fill:#fff;opacity:.35}
+
+nav{display:flex;flex-wrap:wrap;gap:8px}
+nav button{font:inherit;font-family:var(--font-display);font-size:18px;border:0;border-radius:14px;padding:10px 16px;cursor:pointer;
+  background:var(--chip);color:var(--ink)}
+nav button[aria-selected="true"]{background:var(--ink);color:var(--paper)}
+nav .grown{margin-left:auto;font-family:var(--font-ui);font-size:15px;background:transparent;text-decoration:underline;text-underline-offset:3px}
+nav .grown[aria-selected="true"]{background:var(--ink);text-decoration:none}
+button:focus-visible,textarea:focus-visible{outline:3px solid var(--sun);outline-offset:2px}
+
+.stage{background:var(--paper);border-radius:22px;box-shadow:0 4px 0 var(--edge);padding:20px clamp(14px,4vw,28px) 24px;
+  display:flex;flex-direction:column;gap:18px;min-height:380px}
+.meta{display:flex;justify-content:space-between;align-items:center;gap:10px;color:var(--muted);font-size:15px;flex-wrap:wrap}
+.dots{display:flex;gap:5px}
+.dots i{width:12px;height:12px;border-radius:50%;background:var(--chip)}
+.dots i.on{background:var(--acorn)}
+.dots i.miss{background:var(--line-blue)}
+
+.wordsvg{width:100%;max-width:560px;height:auto;display:block;margin:0 auto}
+.wordsvg text{fill:var(--ink);font-family:var(--font-word)}
+.wordsvg .l-blue{stroke:var(--line-blue);stroke-width:3}
+.wordsvg .l-mid{stroke:var(--line-blue);stroke-width:2.5;stroke-dasharray:10 9}
+.wordsvg .l-red{stroke:var(--line-red);stroke-width:3.5}
+
+.row{display:flex;gap:12px;flex-wrap:wrap;justify-content:center}
+.btn{font:inherit;font-family:var(--font-display);font-size:20px;border:0;border-radius:16px;padding:14px 22px;cursor:pointer;
+  background:var(--chip);color:var(--ink);box-shadow:0 3px 0 var(--edge);display:inline-flex;align-items:center;gap:10px;min-height:56px}
+.btn:active{transform:translateY(2px);box-shadow:0 1px 0 var(--edge)}
+.btn.go{background:var(--good);color:var(--paper)}
+.btn.main{background:var(--ink);color:var(--paper)}
+.btn svg{width:26px;height:26px;fill:currentColor}
+
+.hear{align-self:center;width:96px;height:96px;border-radius:50%;border:0;background:var(--sun);color:#3A2A08;cursor:pointer;
+  box-shadow:0 4px 0 var(--acorn-cap);display:grid;place-items:center}
+.hear svg{width:48px;height:48px;fill:currentColor}
+.hear:active{transform:translateY(3px);box-shadow:0 1px 0 var(--acorn-cap)}
+.prompt{text-align:center;font-family:var(--font-display);font-size:22px;margin:0}
+.helper{text-align:center;color:var(--muted);font-size:15px;margin:0}
+.helper b{font-family:var(--font-word);color:var(--ink);font-size:22px}
+.linkish{font:inherit;background:none;border:0;color:var(--muted);text-decoration:underline;cursor:pointer;padding:4px}
+
+.opts{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:14px}
+.opt{font-family:var(--font-word);font-weight:700;font-size:clamp(38px,9vw,56px);line-height:1.1;border:3px solid var(--chip);background:var(--paper);
+  color:var(--ink);border-radius:20px;min-height:110px;cursor:pointer;box-shadow:0 4px 0 var(--edge);padding:8px}
+.opt:active{transform:translateY(2px)}
+.opt.right{background:var(--good-bg);border-color:var(--good);color:var(--good)}
+.opt.wrong{background:var(--try-bg);border-color:var(--try);opacity:.55;animation:wiggle .4s}
+@keyframes wiggle{20%{transform:translateX(-7px)}40%{transform:translateX(7px)}60%{transform:translateX(-4px)}80%{transform:translateX(4px)}}
+
+.sentence{font-family:var(--font-word);font-size:clamp(34px,7.5vw,52px);line-height:1.5;text-align:center;margin:8px 0;text-wrap:balance}
+.blank{display:inline-block;min-width:2.6em;border-bottom:5px dashed var(--line-red);color:transparent;line-height:1.1;padding:0 .1em}
+.blank.filled{color:var(--good);border-bottom-style:solid;border-color:var(--good)}
+.opts.three{grid-template-columns:repeat(3,minmax(0,1fr))}
+@media (max-width:460px){.opts.three{grid-template-columns:repeat(2,minmax(0,1fr))}}
+
+.done{text-align:center;display:flex;flex-direction:column;align-items:center;gap:12px;padding-top:14px}
+.done h2{font-family:var(--font-display);font-size:36px;margin:0;text-wrap:balance}
+.done p{margin:0;color:var(--muted)}
+.bigacorn{width:110px;height:110px}
+
+.panel h2{font-family:var(--font-display);font-size:24px;margin:0 0 4px}
+.panel p{margin:0;color:var(--muted);font-size:15px}
+.chips{display:flex;flex-wrap:wrap;gap:8px;margin-top:12px}
+.chip{font:inherit;font-family:var(--font-word);font-size:22px;font-weight:700;border:0;border-radius:12px;padding:6px 12px 6px 14px;cursor:pointer;
+  background:var(--chip);color:var(--ink);display:inline-flex;align-items:center;gap:8px}
+.chip .n{display:flex;gap:2px}
+.chip .n svg{width:14px;height:14px}
+.chip .n .empty .acorn-nut,.chip .n .empty .acorn-cap{fill:var(--edge)}
+.chip.ripe{background:var(--good-bg);box-shadow:inset 0 0 0 2px var(--good)}
+
+.editor{display:flex;flex-direction:column;gap:14px}
+.editor label{font-family:var(--font-display);font-size:20px}
+.editor textarea{width:100%;min-height:340px;font:inherit;font-size:17px;line-height:1.6;border-radius:14px;border:2px solid var(--chip);
+  background:var(--bg);color:var(--ink);padding:12px 14px;resize:vertical}
+.editor code{font-family:ui-monospace,Menlo,monospace;font-size:14px;background:var(--chip);padding:1px 6px;border-radius:6px}
+.editor .tips{font-size:15px;color:var(--muted);margin:0;max-width:62ch}
+.editor .row{justify-content:flex-start}
+.btn.small{font-size:16px;min-height:44px;padding:10px 16px}
+.btn.warn{background:var(--try-bg);color:var(--try)}
+
+.toast{position:fixed;left:50%;bottom:calc(18px + env(safe-area-inset-bottom,0px));transform:translate(-50%,140%);background:var(--ink);color:var(--paper);
+  font-family:var(--font-display);font-size:20px;padding:12px 22px;border-radius:999px;transition:transform .3s;max-width:calc(100% - 32px);text-align:center}
+.toast.show{transform:translate(-50%,0)}
+.fly{position:fixed;width:30px;height:30px;pointer-events:none;z-index:5;animation:fly .9s ease-out forwards}
+@keyframes fly{to{transform:translate(var(--dx),var(--dy)) rotate(var(--r));opacity:0}}
+.seg{display:flex;flex-wrap:wrap;gap:6px;background:var(--bg);padding:4px;border-radius:14px;align-self:flex-start}
+.seg button{font:inherit;font-family:var(--font-display);font-size:17px;border:0;border-radius:10px;padding:8px 14px;background:transparent;color:var(--muted);cursor:pointer}
+.seg button[aria-pressed="true"]{background:var(--paper);color:var(--ink);box-shadow:0 2px 0 var(--edge)}
+.fams{display:flex;flex-wrap:wrap;gap:6px}
+.fam{font:inherit;font-family:var(--font-word);font-weight:700;font-size:19px;border:2px solid var(--chip);background:transparent;color:var(--ink);border-radius:10px;padding:3px 11px;cursor:pointer;min-height:40px}
+.fam[aria-pressed="true"]{background:var(--chip);border-color:var(--ink)}
+.slidebox{width:100%;max-width:520px;margin:0 auto;display:flex;flex-direction:column;gap:16px}
+.tiles{display:flex;gap:10px;justify-content:center;flex-wrap:wrap}
+.tile{position:relative;font-family:var(--font-word);font-weight:700;font-size:clamp(48px,12vw,72px);line-height:1;min-width:clamp(70px,19vw,108px);
+  padding:16px 14px 22px;border-radius:18px;border:3px solid var(--chip);background:var(--paper);color:var(--ink);cursor:pointer;box-shadow:0 4px 0 var(--edge);
+  transition:background .15s,border-color .15s,transform .15s}
+.tile.lit{background:var(--sun-bg);border-color:var(--sun);transform:translateY(-4px)}
+.tile.heart{border-color:var(--line-red)}
+.tile.silent{color:var(--muted)}
+.tile .hrt{position:absolute;top:6px;right:6px;width:20px;height:20px;fill:var(--line-red)}
+.caption{text-align:center;font-size:19px;margin:0;min-height:1.6em}
+.caption b{font-family:var(--font-word);font-size:26px;margin-right:6px}
+.hico{width:18px;height:18px;fill:var(--line-red);vertical-align:-3px}
+.track{position:relative;height:66px;border-radius:999px;background:var(--chip);touch-action:none}
+.track::before{content:"";position:absolute;left:40px;right:120px;top:50%;border-top:4px dotted var(--edge)}
+.track .end{position:absolute;right:20px;top:50%;transform:translateY(-50%);font-family:var(--font-display);font-size:16px;color:var(--muted)}
+.knob{position:absolute;top:5px;left:0;width:56px;height:56px;border-radius:50%;background:var(--sun);display:grid;place-items:center;cursor:grab;
+  touch-action:none;box-shadow:0 3px 0 var(--acorn-cap);z-index:1}
+.knob:active{cursor:grabbing}
+.knob:focus-visible{outline:3px solid var(--ink);outline-offset:2px}
+.knob svg{width:36px;height:36px}
+.example{font-family:var(--font-word);font-size:clamp(26px,6vw,36px);line-height:1.4;text-align:center;margin:0;text-wrap:balance}
+.example mark{background:var(--sun-bg);color:var(--ink);font-weight:700;border-radius:8px;padding:0 .18em;box-shadow:inset 0 -4px 0 var(--sun)}
+@media (prefers-reduced-motion:reduce){*{animation:none!important;transition:none!important}}
+</style>
+</head>
+<body>
+
+<svg width="0" height="0" style="position:absolute" aria-hidden="true">
+  <symbol id="acorn" viewBox="0 0 40 40">
+    <path class="acorn-nut" d="M8 17 C8 28 14 36 20 38 C26 36 32 28 32 17 Z"/>
+    <ellipse class="acorn-hi" cx="14" cy="24" rx="2.2" ry="5"/>
+    <path class="acorn-cap" d="M5 18 C5 10 11 6 20 6 C29 6 35 10 35 18 C35 20 33 21 31 21 L9 21 C7 21 5 20 5 18 Z"/>
+    <rect class="acorn-cap" x="18.5" y="1" width="3" height="7" rx="1.5"/>
+  </symbol>
+  <symbol id="speaker" viewBox="0 0 24 24">
+    <path d="M4 9h4l5-4v14l-5-4H4z"/><path d="M16 8.5a5 5 0 0 1 0 7" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"/>
+    <path d="M18.5 6a8.5 8.5 0 0 1 0 12" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"/>
+  </symbol>
+  <symbol id="heart" viewBox="0 0 24 24">
+    <path d="M12 21s-7.5-4.6-9.6-9.2C.9 8.4 3 4.5 6.7 4.5c2.2 0 3.6 1.2 5.3 3.2 1.7-2 3.1-3.2 5.3-3.2 3.7 0 5.8 3.9 4.3 7.3C19.5 16.4 12 21 12 21z"/>
+  </symbol>
+</svg>
+
+<div class="wrap">
+  <header>
+    <div>
+      <h1>Acorn Words</h1>
+      <p class="sub" id="weekLabel">Kindergarten sight words · this week</p>
+    </div>
+    <div class="jarbox">
+      <div class="jar" id="jar" title="Acorns collected">
+        <svg><use href="#acorn"/></svg><span id="total">0</span><small>acorns</small>
+      </div>
+      <button class="reset" id="resetAll">Reset</button>
+    </div>
+  </header>
+
+  <nav role="tablist" aria-label="Games">
+    <button role="tab" id="tab-cards" data-mode="cards" aria-selected="true">Flash cards</button>
+    <button role="tab" id="tab-find" data-mode="find" aria-selected="false">Hear &amp; find</button>
+    <button role="tab" id="tab-fill" data-mode="fill" aria-selected="false">Finish the sentence</button>
+    <button role="tab" id="tab-slide" data-mode="slide" aria-selected="false">Sound slide</button>
+    <button role="tab" id="tab-words" data-mode="words" class="grown" aria-selected="false">Grown-ups: edit words</button>
+  </nav>
+
+  <main class="stage" id="stage" aria-live="polite"></main>
+
+  <section class="panel" id="jarPanel">
+    <h2>Word jar</h2>
+    <p>Each word collects up to 3 acorns. Green words are ready. Tap a word to hear it.</p>
+    <div class="chips" id="chips"></div>
+  </section>
+</div>
+<div class="toast" id="toast" role="status"></div>
+
+<script>
+const KEY = 'acorn-words-v1';
+const STARTER = `I: ___ can see a cat.
+can: I ___ run fast.
+a: I see ___ big dog.
+is: The cat ___ on the mat.
+the: I like ___ red hat.
+see: Can you ___ me?
+like: I ___ my mom.
+to: I want ___ go.
+do: What can I ___?
+was: It ___ fun!
+you: I see ___.
+of: A cup ___ milk.
+for: This is ___ you.
+said: Mom ___ yes.
+all: We ate it ___.`;
+const RIPE = 3;
+
+function parseList(text){
+  const seen = new Set(), out = [];
+  for (const raw of text.split('\n')){
+    const line = raw.trim(); if (!line) continue;
+    const i = line.indexOf(':');
+    const w = (i < 0 ? line : line.slice(0, i)).trim();
+    let s = i < 0 ? '' : line.slice(i + 1).trim();
+    if (!w || seen.has(w.toLowerCase())) continue;
+    if (s && !s.includes('___')) s = '';
+    seen.add(w.toLowerCase()); out.push({w, s});
+  }
+  return out;
+}
+function listToText(list){ return list.map(x => x.s ? `${x.w}: ${x.s}` : x.w).join('\n'); }
+
+let state;
+try { state = JSON.parse(localStorage.getItem(KEY)); } catch(e) {}
+if (!state || !Array.isArray(state.list) || !state.list.length) state = {list: parseList(STARTER), acorns: {}, total: 0, label: ''};
+function save(){ try { localStorage.setItem(KEY, JSON.stringify(state)); } catch(e) {} }
+
+const $ = s => document.querySelector(s);
+const stage = $('#stage');
+const esc = s => s.replace(/[&<>"]/g, c => ({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;'}[c]));
+const shuffle = a => { a = a.slice(); for (let i = a.length - 1; i > 0; i--){ const j = Math.random() * (i + 1) | 0; [a[i], a[j]] = [a[j], a[i]]; } return a; };
+const acornsOf = w => state.acorns[w] || 0;
+const acornSVG = cls => `<svg class="${cls||''}" viewBox="0 0 40 40"><use href="#acorn"/></svg>`;
+
+/* ---------- sound ---------- */
+const canSpeak = 'speechSynthesis' in window && 'SpeechSynthesisUtterance' in window;
+let voice = null;
+function pickVoice(){
+  if (voice || !canSpeak) return voice;
+  const vs = speechSynthesis.getVoices().filter(v => /^en(-|_)US/i.test(v.lang));
+  voice = vs.find(v => /samantha|google us english|aria|jenny|ava/i.test(v.name)) || vs[0] || null;
+  return voice;
+}
+if (canSpeak) try { speechSynthesis.onvoiceschanged = () => { voice = null; pickVoice(); }; } catch(e) {}
+function say(text, rate){
+  if (!canSpeak) return false;
+  try {
+    speechSynthesis.cancel();
+    const u = new SpeechSynthesisUtterance(text);
+    u.rate = rate || 0.75; u.pitch = 1.1; u.lang = 'en-US';
+    const v = pickVoice(); if (v) u.voice = v;
+    speechSynthesis.speak(u); return true;
+  } catch(e) { return false; }
+}
+let ac;
+function tones(freqs, step){
+  try {
+    ac = ac || new (window.AudioContext || window.webkitAudioContext)();
+    const t0 = ac.currentTime;
+    freqs.forEach((f, i) => {
+      const o = ac.createOscillator(), g = ac.createGain(), t = t0 + i * step;
+      o.type = 'triangle'; o.frequency.value = f;
+      g.gain.setValueAtTime(0.0001, t);
+      g.gain.exponentialRampToValueAtTime(0.22, t + 0.02);
+      g.gain.exponentialRampToValueAtTime(0.0001, t + step * 1.8);
+      o.connect(g); g.connect(ac.destination); o.start(t); o.stop(t + step * 2);
+    });
+  } catch(e) {}
+}
+const chime = () => tones([660, 880, 1320], 0.1);
+const boop = () => tones([330, 247], 0.14);
+
+/* ---------- acorns ---------- */
+function toast(msg){
+  const t = $('#toast'); t.textContent = msg; t.classList.add('show');
+  clearTimeout(toast.h); toast.h = setTimeout(() => t.classList.remove('show'), 2200);
+}
+function burst(fromEl){
+  const r = fromEl.getBoundingClientRect();
+  for (let i = 0; i < 6; i++){
+    const s = document.createElementNS('http://www.w3.org/2000/svg', 'svg');
+    s.setAttribute('viewBox', '0 0 40 40'); s.setAttribute('class', 'fly');
+    s.innerHTML = '<use href="#acorn"/>';
+    s.style.left = (r.left + r.width / 2 - 15) + 'px'; s.style.top = (r.top + r.height / 2 - 15) + 'px';
+    const a = Math.PI * 2 * i / 6 + Math.random() * .5;
+    s.style.setProperty('--dx', Math.cos(a) * 90 + 'px'); s.style.setProperty('--dy', Math.sin(a) * 90 - 40 + 'px');
+    s.style.setProperty('--r', (Math.random() * 180 - 90) + 'deg');
+    document.body.appendChild(s); setTimeout(() => s.remove(), 1000);
+  }
+}
+function award(word, el, bucket){
+  const b = bucket || 'acorns';
+  state[b] = state[b] || {};
+  state[b][word] = (state[b][word] || 0) + 1; state.total++; save();
+  chime(); if (el) burst(el);
+  const jar = $('#jar'); jar.classList.remove('bump'); void jar.offsetWidth; jar.classList.add('bump');
+  renderJar();
+  if (state.total % 10 === 0) toast(`${state.total} acorns! The squirrel is so proud.`);
+  else if (b === 'acorns' && acornsOf(word) === RIPE) toast(`“${word}” is ready! 3 acorns.`);
+}
+function renderJar(){
+  $('#total').textContent = state.total;
+  $('#chips').innerHTML = state.list.map(x => {
+    const n = acornsOf(x.w), pips = [0,1,2].map(i => acornSVG(i < n ? '' : 'empty')).join('');
+    return `<button class="chip ${n >= RIPE ? 'ripe' : ''}" data-say="${esc(x.w)}" aria-label="${esc(x.w)}, ${n} acorns">${esc(x.w)}<span class="n">${pips}</span></button>`;
+  }).join('');
+}
+$('#chips').addEventListener('click', e => { const b = e.target.closest('[data-say]'); if (b) say(b.dataset.say); });
+
+/* least-practiced words come up more often */
+function weightedPick(pool, avoid){
+  const c = pool.filter(x => x.w !== avoid);
+  const src = c.length ? c : pool;
+  const ws = src.map(x => 1 / (1 + acornsOf(x.w)) ** 1.5);
+  let r = Math.random() * ws.reduce((a, b) => a + b, 0);
+  for (let i = 0; i < src.length; i++){ r -= ws[i]; if (r <= 0) return src[i]; }
+  return src[src.length - 1];
+}
+function optionsFor(target, count){
+  const others = shuffle(state.list.filter(x => x.w !== target.w)).slice(0, count - 1);
+  return shuffle([target, ...others]);
+}
+function dots(results, total){
+  let h = '<div class="dots" aria-hidden="true">';
+  for (let i = 0; i < total; i++) h += `<i class="${results[i] === true ? 'on' : results[i] === false ? 'miss' : ''}"></i>`;
+  return h + '</div>';
+}
+
+/* the word inside a sentence, highlighted where it sits */
+function exampleHTML(s, w){
+  let i = s.indexOf('___'), len = 3, word = w;
+  if (i < 0){
+    const m = new RegExp(`\\b${w.replace(/[.*+?^${}()|[\]\\]/g, '\\$&')}\\b`, 'i').exec(s);
+    if (!m) return `<p class="example">${esc(s)}</p>`;
+    i = m.index; len = m[0].length; word = m[0];
+  }
+  return `<p class="example">${esc(s.slice(0, i))}<mark>${esc(word)}</mark>${esc(s.slice(i + len))}</p>`;
+}
+const sentenceText = (s, w) => s.replace('___', w);
+
+/* word drawn on kindergarten handwriting paper: blue top line, dashed middle, red baseline */
+function wordSVG(w){
+  const top = 52, mid = 94, base = 150;
+  const size = Math.min(150, 540 / Math.max(1, w.length * 0.56));
+  return `<svg class="wordsvg" viewBox="0 0 600 200" role="img" aria-label="${esc(w)}">
+    <line class="l-blue" x1="10" x2="590" y1="${top}" y2="${top}"/>
+    <line class="l-mid" x1="10" x2="590" y1="${mid}" y2="${mid}"/>
+    <line class="l-red" x1="10" x2="590" y1="${base}" y2="${base}"/>
+    <text x="300" y="${base}" text-anchor="middle" font-size="${size}">${esc(w)}</text>
+  </svg>`;
+}
+
+/* ---------- Flash cards ---------- */
+let flash = {order: [], i: 0, results: []};
+function startCards(){
+  flash.order = state.list.slice().map(x => [x, acornsOf(x.w) + Math.random() * 1.5]).sort((a, b) => a[1] - b[1]).map(a => a[0]);
+  flash.i = 0; flash.results = []; renderCards();
+}
+function renderCards(){
+  const n = flash.order.length;
+  if (flash.i >= n){
+    const got = flash.results.filter(Boolean).length;
+    stage.innerHTML = `<div class="done">${acornSVG('bigacorn')}
+      <h2>You read ${got} of ${n} words!</h2>
+      <p>${got === n ? 'Every single one. Wow.' : 'The tricky ones will come back next time.'}</p>
+      <div class="row"><button class="btn main" id="again">Shuffle the cards</button></div></div>`;
+    $('#again').onclick = startCards; return;
+  }
+  const x = flash.order[flash.i];
+  stage.innerHTML = `<div class="meta"><span>Card ${flash.i + 1} of ${n}</span>${dots(flash.results, n)}</div>
+    ${wordSVG(x.w)}
+    ${x.s ? exampleHTML(x.s, x.w) : ''}
+    <div class="row">
+      <button class="btn" id="hearCard"><svg><use href="#speaker"/></svg>Hear it</button>
+      ${x.s ? '<button class="btn" id="hearSent"><svg><use href="#speaker"/></svg>Hear the sentence</button>' : ''}
+      <button class="btn" id="later">Try later</button>
+      <button class="btn go" id="gotIt">${acornSVG('')} I read it!</button>
+    </div>
+    <p class="helper">She reads the card out loud. A grown-up taps “I read it!” when she gets it.</p>`;
+  $('#hearCard').onclick = () => say(x.w);
+  if (x.s) $('#hearSent').onclick = () => say(sentenceText(x.s, x.w), 0.8);
+  $('#later').onclick = () => { flash.results.push(false); flash.i++; renderCards(); };
+  $('#gotIt').onclick = e => { award(x.w, e.currentTarget); flash.results.push(true); flash.i++; setTimeout(renderCards, 350); };
+}
+
+/* ---------- Hear & find ---------- */
+const FIND_ROUNDS = 10;
+let find = {};
+function startFind(){ find = {round: 0, results: [], target: null}; nextFind(); }
+function nextFind(){
+  if (find.round >= FIND_ROUNDS) return roundDone(find.results, startFind, 'Play again');
+  find.round++;
+  find.target = weightedPick(state.list, find.target && find.target.w);
+  find.opts = optionsFor(find.target, Math.min(4, state.list.length));
+  find.first = true; find.locked = false;
+  renderFind();
+  setTimeout(() => say(find.target.w), 250);
+}
+function renderFind(){
+  const t = find.target;
+  stage.innerHTML = `<div class="meta"><span>Round ${find.round} of ${FIND_ROUNDS}</span>${dots(find.results, FIND_ROUNDS)}</div>
+    <button class="hear" id="hear" aria-label="Hear the word again"><svg><use href="#speaker"/></svg></button>
+    <p class="prompt">Listen, then tap the word.</p>
+    ${canSpeak ? '' : `<p class="helper" id="peek"><button class="linkish" id="peekBtn">No sound here. Grown-up, tap to see the word to say.</button></p>`}
+    <div class="opts">${find.opts.map(o => `<button class="opt" data-w="${esc(o.w)}">${esc(o.w)}</button>`).join('')}</div>`;
+  $('#hear').onclick = () => say(t.w);
+  const pb = $('#peekBtn'); if (pb) pb.onclick = () => { $('#peek').innerHTML = `Say: <b>${esc(t.w)}</b>`; };
+  stage.querySelectorAll('.opt').forEach(b => b.onclick = () => {
+    if (find.locked || b.classList.contains('wrong')) return;
+    if (b.dataset.w === t.w){
+      find.locked = true; b.classList.add('right');
+      if (find.first) award(t.w, b); else chime();
+      find.results.push(find.first);
+      setTimeout(nextFind, 1100);
+    } else {
+      find.first = false; b.classList.add('wrong'); boop();
+      setTimeout(() => say(t.w), 350);
+    }
+  });
+}
+
+/* ---------- Finish the sentence ---------- */
+const FILL_ROUNDS = 8;
+let fill = {};
+function startFill(){ fill = {round: 0, results: [], target: null}; nextFill(); }
+function nextFill(){
+  const pool = state.list.filter(x => x.s);
+  if (!pool.length){
+    stage.innerHTML = `<div class="done"><h2>No sentences yet</h2>
+      <p>Add a sentence after a word in the word list, like <b>see: I can ___ you.</b></p>
+      <div class="row"><button class="btn main" id="toWords">Edit the word list</button></div></div>`;
+    $('#toWords').onclick = () => setMode('words'); return;
+  }
+  if (fill.round >= FILL_ROUNDS) return roundDone(fill.results, startFill, 'Play again');
+  fill.round++;
+  fill.target = weightedPick(pool, fill.target && fill.target.w);
+  fill.opts = optionsFor(fill.target, Math.min(3, state.list.length));
+  fill.first = true; fill.locked = false;
+  renderFill();
+}
+const spoken = (s, w) => s.replace('___', w || '... hmm ...');
+function renderFill(){
+  const t = fill.target, [pre, post] = t.s.split('___');
+  stage.innerHTML = `<div class="meta"><span>Sentence ${fill.round} of ${FILL_ROUNDS}</span>${dots(fill.results, FILL_ROUNDS)}</div>
+    <p class="sentence">${esc(pre)}<span class="blank" id="blank">${esc(t.w)}</span>${esc(post || '')}</p>
+    <div class="row"><button class="btn" id="readS"><svg><use href="#speaker"/></svg>Read it to me</button></div>
+    <p class="prompt">Which word fits?</p>
+    <div class="opts three">${fill.opts.map(o => `<button class="opt" data-w="${esc(o.w)}">${esc(o.w)}</button>`).join('')}</div>`;
+  $('#readS').onclick = () => say(spoken(t.s, fill.locked ? t.w : ''), 0.8);
+  stage.querySelectorAll('.opt').forEach(b => b.onclick = () => {
+    if (fill.locked || b.classList.contains('wrong')) return;
+    if (b.dataset.w === t.w){
+      fill.locked = true; b.classList.add('right'); $('#blank').classList.add('filled');
+      if (fill.first) award(t.w, b); else chime();
+      fill.results.push(fill.first);
+      setTimeout(() => say(spoken(t.s, t.w), 0.8), 400);
+      setTimeout(nextFill, 3000);
+    } else {
+      fill.first = false; b.classList.add('wrong'); boop();
+    }
+  });
+}
+
+function roundDone(results, again, label){
+  const got = results.filter(Boolean).length;
+  stage.innerHTML = `<div class="done">${acornSVG('bigacorn')}
+    <h2>${got} acorns this round!</h2>
+    <p>${got === results.length ? 'Perfect round. Every word on the first try.' : 'Words she missed will show up more next time.'}</p>
+    <div class="row"><button class="btn main" id="again">${label}</button></div></div>`;
+  $('#again').onclick = again;
+  say(got === results.length ? 'Perfect! Great reading!' : 'Great job!', 0.9);
+}
+
+/* ---------- Sound slide ---------- */
+/* Browser voices can't say a lone sound cleanly, so each letter plays a keyword that starts with its sound. */
+const KEYS = {a:['a','apple'], b:['b','ball'], c:['k','cat'], d:['d','dog'], e:['e','egg'], f:['f','fish'], g:['g','goat'], h:['h','hat'],
+  i:['i','itch'], j:['j','jam'], k:['k','kite'], l:['l','lion'], m:['m','moon'], n:['n','nest'], o:['o','octopus'], p:['p','pig'], q:['kw','queen'],
+  r:['r','rabbit'], s:['s','sun'], t:['t','top'], u:['u','up'], v:['v','van'], w:['w','web'], x:['ks','box'], y:['y','yes'], z:['z','zoo']};
+const TEAMS = {th:['th','thumb'], sh:['sh','ship'], ch:['ch','chip'], ck:['k','duck'], ee:['ē','bee'], oo:['oo','moon'], ll:['l','bell'], ss:['s','kiss']};
+function L(ch){
+  const k = KEYS[ch.toLowerCase()];
+  return k ? {g: ch, say: k[1], note: `/${k[0]}/ as in ${k[1]}`} : {g: ch, say: '', note: ''};
+}
+const T = (g, note, sayIt, extra) => Object.assign({g, note, say: sayIt}, extra);
+const HEART = {heart: true};
+/* heart parts: letters that don't make their usual sound in this word */
+const SIGHT = {
+  I: [T('I', 'says its name, /ī/', 'I')],
+  a: [T('a', 'here it says /uh/', 'uh', HEART)],
+  is: [L('i'), T('s', 'here it says /z/ as in zoo', 'zoo', HEART)],
+  the: [T('th', '/th/ as in thumb', 'thumb'), T('e', 'here it says /uh/', 'uh', HEART)],
+  see: [L('s'), T('ee', 'two e’s say /ē/, the letter’s name', 'E')],
+  like: [L('l'), T('i', 'says its name, /ī/, because of the e at the end', 'I'), L('k'), T('e', 'silent e: no sound, but it makes the i say its name', '', {silent: true})],
+  to: [L('t'), T('o', 'here it says /oo/ as in moon', 'moon', HEART)],
+  do: [L('d'), T('o', 'here it says /oo/ as in moon', 'moon', HEART)],
+  was: [L('w'), T('a', 'here it says /u/ as in up', 'up', HEART), T('s', 'here it says /z/ as in zoo', 'zoo', HEART)],
+  you: [L('y'), T('ou', 'here it says /oo/ as in moon', 'moon', HEART)],
+  of: [T('o', 'here it says /u/ as in up', 'up', HEART), T('f', 'here it says /v/ as in van', 'van', HEART)],
+  for: [L('f'), T('or', '/or/ as in corn', 'corn')],
+  said: [L('s'), T('ai', 'here it says /e/ as in egg', 'egg', HEART), L('d')],
+  all: [T('a', 'here it says /aw/ as in ball', 'ball'), T('ll', 'two l’s, one sound: /l/', 'lion')]
+};
+function autoTiles(w){
+  const out = [];
+  for (let i = 0; i < w.length;){
+    const two = w.slice(i, i + 2).toLowerCase(), t = TEAMS[two];
+    if (t){ out.push({g: w.slice(i, i + 2), say: t[1], note: `/${t[0]}/ as in ${t[1]}`}); i += 2; }
+    else { out.push(L(w[i])); i++; }
+  }
+  return out;
+}
+/* word families built only from letters taught so far: m b s t a d n c p i r f o */
+const FAMILIES = {
+  at: ['sat', 'mat', 'rat', 'cat', 'bat', 'pat'], an: ['man', 'fan', 'ran', 'can', 'tan', 'pan'],
+  ap: ['map', 'nap', 'sap', 'tap', 'cap'], ad: ['sad', 'mad', 'dad', 'pad', 'bad'],
+  ip: ['sip', 'rip', 'nip', 'tip', 'dip'], it: ['sit', 'fit', 'pit', 'bit'], in: ['fin', 'pin', 'tin', 'bin'],
+  op: ['mop', 'top', 'pop', 'cop'], ot: ['not', 'rot', 'pot', 'dot', 'cot']
+};
+const CVC_SENT = {
+  sat: 'I sat on the rug.', mat: 'The cat is on the mat.', rat: 'The rat ran fast.', cat: 'I see a cat.', bat: 'I hit the ball with a bat.', pat: 'I pat the dog.',
+  man: 'The man is tall.', fan: 'Turn on the fan.', ran: 'We ran to the park.', can: 'I can jump.', tan: 'The dog is tan.', pan: 'Eggs go in the pan.',
+  map: 'Look at the map.', nap: 'The baby takes a nap.', sap: 'Sap is sticky.', tap: 'Tap the drum.', cap: 'I have a red cap.',
+  sad: 'The dog is sad.', mad: 'Do not be mad.', dad: 'I love my dad.', pad: 'Draw on the pad.', bad: 'The milk went bad.',
+  sip: 'Take a sip of milk.', rip: 'Do not rip the page.', nip: 'The pup can nip.', tip: 'Touch the tip of your nose.', dip: 'Dip the chip.',
+  sit: 'Sit on the rug.', fit: 'The hat does not fit.', pit: 'A peach has a pit.', bit: 'I bit the apple.',
+  fin: 'A fish has a fin.', pin: 'Put on the pin.', tin: 'The can is made of tin.', bin: 'Put it in the bin.',
+  mop: 'Mop the floor.', top: 'Spin the top.', pop: 'Pop the bubble.', cop: 'The cop helps us.',
+  not: 'I am not sleepy.', rot: 'Old apples rot.', pot: 'The soup is in the pot.', dot: 'Draw a dot.', cot: 'The baby sleeps on a cot.'
+};
+let slide = {sub: 'out', fam: 'at', i: 0, pick: null};
+
+function tilesHTML(tiles){
+  return `<div class="tiles">${tiles.map((t, i) => `<button class="tile ${t.heart ? 'heart' : ''} ${t.silent ? 'silent' : ''}" data-i="${i}" aria-label="${esc(t.g)}: ${esc(t.note)}">${t.heart ? '<svg class="hrt" aria-hidden="true"><use href="#heart"/></svg>' : ''}${esc(t.g)}</button>`).join('')}</div>
+    <p class="caption" id="cap">Tap a letter to hear its sound.</p>`;
+}
+function bindTiles(tiles){
+  stage.querySelectorAll('.tile').forEach(b => b.onclick = () => {
+    const t = tiles[+b.dataset.i];
+    $('#cap').innerHTML = `<b>${esc(t.g)}</b>${esc(t.note)}`;
+    if (t.say) say(t.say);
+  });
+}
+function renderSlide(){
+  const seg = `<div class="seg" role="group" aria-label="Sound slide activity">
+    <button data-sub="out" aria-pressed="${slide.sub === 'out'}">Sound it out</button>
+    <button data-sub="look" aria-pressed="${slide.sub === 'look'}">Look inside my words</button></div>`;
+  if (slide.sub === 'out') renderBlend(seg); else renderLook(seg);
+  stage.querySelectorAll('[data-sub]').forEach(b => b.onclick = () => { slide.sub = b.dataset.sub; renderSlide(); });
+}
+function renderBlend(seg){
+  const words = FAMILIES[slide.fam], w = words[slide.i % words.length], tiles = w.split('').map(L);
+  stage.innerHTML = `${seg}
+    <div class="fams" role="group" aria-label="Word family">${Object.keys(FAMILIES).map(f => `<button class="fam" data-fam="${f}" aria-pressed="${f === slide.fam}">-${f}</button>`).join('')}</div>
+    <div class="slidebox">
+      ${tilesHTML(tiles)}
+      <div class="track" id="track"><div class="knob" id="knob" role="slider" tabindex="0" aria-label="Slide the acorn under the letters" aria-valuemin="0" aria-valuemax="100" aria-valuenow="0">${acornSVG('')}</div><span class="end">say it fast!</span></div>
+      <p class="prompt" id="blendPrompt">Roll the acorn under each letter. Say each sound as it lights up.</p>
+      <div id="blendEx"></div>
+      <div class="row" id="blendBtns"><button class="btn" id="auto">Slide for me</button></div>
+    </div>`;
+  stage.querySelectorAll('[data-fam]').forEach(b => b.onclick = () => { slide.fam = b.dataset.fam; slide.i = 0; renderSlide(); });
+  bindTiles(tiles);
+  const next = () => { slide.i++; renderSlide(); };
+  setupSlide(() => {
+    tones([660, 990], 0.09);
+    $('#blendPrompt').textContent = 'Now say it fast!';
+    $('#blendBtns').innerHTML = `<button class="btn" id="hearW"><svg><use href="#speaker"/></svg>Check: hear it</button>
+      <button class="btn go" id="gotB">${acornSVG('')} She said it!</button>
+      <button class="btn" id="nextB">Next word</button>`;
+    /* the sentence appears only after she has blended, so it doesn't give the word away */
+    $('#hearW').onclick = () => {
+      say(CVC_SENT[w] ? `${w}. ${CVC_SENT[w]}` : w, 0.8);
+      if (CVC_SENT[w]) $('#blendEx').innerHTML = exampleHTML(CVC_SENT[w], w);
+    };
+    $('#gotB').onclick = e => { const b = e.currentTarget; b.disabled = true; award(w, b, 'blend'); setTimeout(next, 900); };
+    $('#nextB').onclick = next;
+  });
+}
+function setupSlide(onDone){
+  const track = $('#track'), knob = $('#knob'), tiles = [...stage.querySelectorAll('.tile')], PAD = 5;
+  let f = 0, finished = false, drag = false;
+  const lit = new Set();
+  function set(nf){
+    f = Math.max(0, Math.min(1, nf));
+    const kw = knob.offsetWidth, x = PAD + f * (track.clientWidth - kw - 2 * PAD);
+    knob.style.transform = `translateX(${x}px)`;
+    knob.setAttribute('aria-valuenow', Math.round(f * 100));
+    const kc = track.getBoundingClientRect().left + x + kw / 2;
+    tiles.forEach((t, i) => {
+      const r = t.getBoundingClientRect();
+      if (!lit.has(i) && kc >= r.left + r.width * 0.4){ lit.add(i); t.classList.add('lit'); tones([520 + i * 110], 0.07); }
+    });
+    if (f >= 0.98 && !finished){ finished = true; onDone(); }
+  }
+  const fromX = cx => { const r = track.getBoundingClientRect(), kw = knob.offsetWidth; return (cx - r.left - kw / 2 - PAD) / (r.width - kw - 2 * PAD); };
+  knob.addEventListener('pointerdown', e => { drag = true; try { knob.setPointerCapture(e.pointerId); } catch(_) {} e.preventDefault(); });
+  knob.addEventListener('pointermove', e => { if (drag) set(fromX(e.clientX)); });
+  ['pointerup', 'pointercancel'].forEach(t => knob.addEventListener(t, () => { drag = false; }));
+  knob.addEventListener('keydown', e => {
+    if (e.key === 'ArrowRight'){ set(f + 0.1); e.preventDefault(); }
+    else if (e.key === 'ArrowLeft'){ set(f - 0.1); e.preventDefault(); }
+  });
+  /* a slow roll gives her time to say each sound */
+  $('#auto').onclick = () => {
+    const from = f, start = performance.now(), dur = 1100 * tiles.length * (1 - from) + 300;
+    (function step(now){
+      const p = Math.min(1, (now - start) / dur);
+      set(from + (1 - from) * p);
+      if (p < 1 && !finished) requestAnimationFrame(step);
+    })(start);
+  };
+  set(0);
+}
+function renderLook(seg){
+  if (!slide.pick || !state.list.some(x => x.w === slide.pick)) slide.pick = state.list[0].w;
+  const w = slide.pick, known = SIGHT[w] || SIGHT[w.toLowerCase()], tiles = known || autoTiles(w);
+  const sent = (state.list.find(x => x.w === w) || {}).s;
+  const hearts = tiles.filter(t => t.heart).length;
+  let help;
+  if (!known) help = 'Tap each letter to hear its usual sound. Grown-up: this word is new to the game, so tricky letters aren’t marked.';
+  else if (hearts) help = `<svg class="hico" aria-hidden="true"><use href="#heart"/></svg> ${hearts === 1 ? '1 heart part' : hearts + ' heart parts'}. Heart parts don’t follow the usual sound rules, so we learn them by heart.`;
+  else help = 'No heart parts. She can sound this one out!';
+  stage.innerHTML = `${seg}
+    <div class="fams" role="group" aria-label="Pick a word">${state.list.map(x => `<button class="fam" data-pick="${esc(x.w)}" aria-pressed="${x.w === w}">${esc(x.w)}</button>`).join('')}</div>
+    <div class="slidebox">
+      ${tilesHTML(tiles)}
+      <p class="helper">${help}</p>
+      ${sent ? exampleHTML(sent, w) : ''}
+      <div class="row"><button class="btn" id="hearWhole"><svg><use href="#speaker"/></svg>Hear the whole word</button>
+        ${sent ? '<button class="btn" id="hearLookSent"><svg><use href="#speaker"/></svg>Hear the sentence</button>' : ''}</div>
+    </div>`;
+  if (sent) $('#hearLookSent').onclick = () => say(sentenceText(sent, w), 0.8);
+  stage.querySelectorAll('[data-pick]').forEach(b => b.onclick = () => { slide.pick = b.dataset.pick; renderSlide(); });
+  bindTiles(tiles);
+  $('#hearWhole').onclick = () => say(w);
+}
+
+/* ---------- Grown-ups: word list ---------- */
+function renderWords(){
+  stage.innerHTML = `<div class="editor">
+    <label for="label">This week</label>
+    <textarea id="label" style="min-height:0;height:52px" rows="1" placeholder="Week 12">${esc(state.label || '')}</textarea>
+    <label for="list">Words to practice</label>
+    <p class="tips">One word per line. To use a word in <b>Finish the sentence</b>, add a colon and a short sentence with <code>___</code> where the word goes, like <code>said: Mom ___ yes.</code> Acorns already earned stay with each word.</p>
+    <textarea id="list" spellcheck="false">${esc(listToText(state.list))}</textarea>
+    <div class="row">
+      <button class="btn go small" id="saveList">Save words</button>
+      <button class="btn small" id="resetList">Use the starter list</button>
+      <button class="btn warn small" id="clearAcorns">Clear all acorns</button>
+    </div>
+    <p class="tips" id="note"></p></div>`;
+  $('#saveList').onclick = () => {
+    const list = parseList($('#list').value);
+    if (list.length < 2){ $('#note').textContent = 'Add at least 2 words so the games have choices.'; return; }
+    state.list = list; state.label = $('#label').value.trim(); save(); renderJar(); renderLabel();
+    const withS = list.filter(x => x.s).length;
+    $('#note').textContent = `Saved ${list.length} words, ${withS} with sentences.`;
+  };
+  $('#resetList').onclick = () => { $('#list').value = STARTER; $('#label').value = ''; $('#note').textContent = 'Starter list loaded. Tap Save words to use it.'; };
+  const ca = $('#clearAcorns');
+  ca.onclick = () => {
+    if (ca.dataset.armed){ state.acorns = {}; state.blend = {}; state.total = 0; save(); renderJar(); ca.textContent = 'Acorns cleared'; delete ca.dataset.armed; return; }
+    ca.dataset.armed = '1'; ca.textContent = 'Tap again to clear every acorn';
+    setTimeout(() => { if (ca.dataset.armed){ delete ca.dataset.armed; ca.textContent = 'Clear all acorns'; } }, 4000);
+  };
+}
+function renderLabel(){
+  $('#weekLabel').textContent = 'Kindergarten sight words · ' + (state.label ? state.label.replace(/^week of/i, 'week of') : 'this week');
+}
+
+/* ---------- modes ---------- */
+const MODES = {cards: startCards, find: startFind, fill: startFill, slide: renderSlide, words: renderWords};
+let mode = 'cards';
+/* two taps so a small hand can't wipe the jar by accident */
+const resetBtn = $('#resetAll');
+resetBtn.onclick = () => {
+  if (resetBtn.dataset.armed){
+    delete resetBtn.dataset.armed; resetBtn.textContent = 'Reset';
+    state.acorns = {}; state.blend = {}; state.total = 0; save(); renderJar();
+    toast('Fresh start! The jar is empty.');
+    if (mode !== 'words') MODES[mode]();
+    return;
+  }
+  resetBtn.dataset.armed = '1'; resetBtn.textContent = 'Tap again to empty the jar';
+  setTimeout(() => { if (resetBtn.dataset.armed){ delete resetBtn.dataset.armed; resetBtn.textContent = 'Reset'; } }, 4000);
+};
+function setMode(m){
+  mode = m;
+  if (canSpeak) try { speechSynthesis.cancel(); } catch(e) {}
+  document.querySelectorAll('nav [role=tab]').forEach(b => b.setAttribute('aria-selected', b.dataset.mode === m ? 'true' : 'false'));
+  $('#jarPanel').hidden = m === 'words';
+  MODES[m]();
+}
+document.querySelectorAll('nav [role=tab]').forEach(b => b.onclick = () => setMode(b.dataset.mode));
+
+renderLabel(); renderJar(); setMode('cards');
+</script>
+</body>
+</html>
